@@ -12,8 +12,9 @@
     ];
 
   # Bootloader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.grub.enable = true;
+  boot.loader.grub.device = "/dev/sda";
+  boot.loader.grub.useOSProber = true;
 
   networking.hostName = "NextCloudNix"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
@@ -69,7 +70,7 @@
   };
 
   # Enable touchpad support (enabled default in most desktopManager).
-  services.xserver.libinput.enable = true;
+  services.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.bear = {
@@ -100,7 +101,7 @@
      pkgs.bitwarden
      terminator
      pkgs.gnome-tweaks
-     pkgs.gnome.gnome-boxes
+     pkgs.gnome-boxes
      pkgs.cherrytree
      pkgs.git
      pkgs.btop
@@ -110,9 +111,10 @@
      pkgs.autojump
      pkgs.chromium
      pkgs.libvirt
+     pkgs.vscode
      pkgs.qemu
      #RDP session package
-     pkgs.gnome.gnome-session
+     pkgs.gnome-session
 
      pkgs.nfs-utils
 
@@ -145,14 +147,29 @@
   # services.openssh.enable = true;
 
   # Nextcloud setup
-
-  environment.etc."nextcloud-admin-pass".text = "PWD";
+  
+  
+  environment.etc."nextcloud-admin-pass".text = "Cranberry!Overrule!";
   services.nextcloud = {
     enable = true;
-    package = pkgs.nextcloud28;
-    hostName = "localhost";
+    package = pkgs.nextcloud30;
+    hostName = "nextcloudnix.com";
+    # configureRedis = true;
+    # https = true;
     config.adminpassFile = "/etc/nextcloud-admin-pass";
-};
+    config.adminuser = "bear";
+    config.dbtype = "pgsql";
+    extraOptions = {
+      mail_smtpmode = "sendmail";
+      mail_sendmailmode = "pipe";
+    };
+    autoUpdateApps.enable = true;
+    extraAppsEnable = true;
+    extraApps = {
+      inherit (config.services.nextcloud.package.packages.apps) calendar contacts mail notes tasks whiteboard;
+    };
+    
+   };
 
   # Virt-Manager service
   virtualisation.libvirtd.enable = true;
