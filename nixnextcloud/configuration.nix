@@ -149,7 +149,7 @@
   # Nextcloud setup
   
   
-  environment.etc."nextcloud-admin-pass".text = "Cranberry!Overrule!";
+  environment.etc."nextcloud-admin-pass".text = "pwd";
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud30;
