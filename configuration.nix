@@ -4,19 +4,60 @@
 
 { config, lib, pkgs, ... }:
 {
+    
+  #begin Nvidia Config
+  # Enable OpenGL
+  hardware.graphics = {
+    enable = true;
+  };
 
+  # Load nvidia driver for Xorg and Wayland
+  services.xserver.videoDrivers = ["nvidia"];
+
+  hardware.nvidia = {
+
+    # Modesetting is required.
+    modesetting.enable = true;
+
+    # Nvidia power management. Experimental, and can cause sleep/suspend to fail.
+    # Enable this if you have graphical corruption issues or application crashes after waking
+    # up from sleep. This fixes it by saving the entire VRAM memory to /tmp/ instead 
+    # of just the bare essentials.
+    powerManagement.enable = false;
+
+    # Fine-grained power management. Turns off GPU when not in use.
+    # Experimental and only works on modern Nvidia GPUs (Turing or newer).
+    powerManagement.finegrained = false;
+
+    # Use the NVidia open source kernel module (not to be confused with the
+    # independent third-party "nouveau" open source driver).
+    # Support is limited to the Turing and later architectures. Full list of 
+    # supported GPUs is at: 
+    # https://github.com/NVIDIA/open-gpu-kernel-modules#compatible-gpus 
+    # Only available from driver 515.43.04+
+    # Currently alpha-quality/buggy, so false is currently the recommended setting.
+    open = false;
+
+    # Enable the Nvidia settings menu,
+	  # accessible via `nvidia-settings`.
+    nvidiaSettings = true;
+
+    # Optionally, you may need to select the appropriate driver version for your specific GPU.
+    package = config.boot.kernelPackages.nvidiaPackages.stable;
+  };
+   ##nvidia Config End---------
 
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
+
     ];
 
   # Bootloader.
-  boot.loader.grub.enable = true;
-  boot.loader.grub.device = "/dev/sda";
-  boot.loader.grub.useOSProber = true;
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "NextCloudNix"; # Define your hostname.
+  networking.hostName = "nixosDesktop"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
   # Configure network proxy if necessary
@@ -54,6 +95,14 @@
   # Configure keymap in X11
   services.xserver.xkb.layout = "us";
 
+  # Enable CUPS to print documents.
+  services.printing.enable = true;
+  services.avahi = {
+  enable = true;
+  nssmdns4 = true;
+  openFirewall = true;
+  };
+
   # Enable sound with pipewire.
   # sound.enable = true;
   hardware.pulseaudio.enable = false;
@@ -69,8 +118,9 @@
     #media-session.enable = true;
   };
 
+
   # Enable touchpad support (enabled default in most desktopManager).
-  services.libinput.enable = true;
+  # services.xserver.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.bear = {
@@ -84,7 +134,7 @@
 
     ];
   };
-
+  
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
@@ -95,27 +145,46 @@
   # $ nix search wget
   environment.systemPackages = with pkgs; [
      git
-     vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+     vim 
      wget
      curl
      pkgs.bitwarden
+     pkgs.nextcloud-client
      terminator
+     #RDP session package
+     pkgs.gnome-session
      pkgs.gnome-tweaks
      pkgs.gnome-boxes
+     pkgs.tor-browser
      pkgs.cherrytree
      pkgs.git
+     pkgs.sparrow
+     pkgs.spotify
      pkgs.btop
+     pkgs.remmina
+     pkgs.openvpn
+     pkgs.vscode
+     #pkgs.zsh
      pkgs.neofetch
      pkgs.neovim
      pkgs.starship
      pkgs.autojump
+     pkgs.libreoffice
+     pkgs.freetube 
      pkgs.chromium
+     pkgs.flameshot
+     pkgs.python3
+     #pkgs.mullvad
+     #pkgs.mullvad-browser
+     pkgs.qbittorrent
+     pkgs.jellyfin
+     pkgs.jellyfin-web
+     pkgs.jellyfin-ffmpeg
+     pkgs.vlc
+     pkgs.virt-manager
      pkgs.libvirt
-     pkgs.vscode
-     pkgs.qemu
-     #RDP session package
-     pkgs.gnome-session
-
+     pkgs.gnomeExtensions.openweather-refined
+     pkgs.sops
      pkgs.nfs-utils
 
  ];
@@ -123,7 +192,9 @@
   programs.chromium = {
   enable = true;
   extensions = [
-    "nngceckbapebfimnlniiiahkandclblb" # ublock origin
+    "nngceckbapebfimnlniiiahkandclblb" # bitwarden
+    "cjpalhdlnbpafiamejdnhcphjbkeiagm" # ublock origin
+    "eimadpbcbfnmbkopoojfekhnkhdbieeh" # dark reader
   ];
   };
   # Set the default editor to vim
@@ -135,8 +206,23 @@
     MOZ_ENABLE_WAYLAND = 0;
   };
 
- 
-   # xRDP SEssion Gnome enable
+  # Some programs need SUID wrappers, can be configured further or are
+  # started in user sessions.
+  # programs.steam.enable = true
+  # programs.mtr.enable = true;
+  # programs.gnupg.agent = {
+  #   enable = true;
+  #   enableSSHSupport = true;
+  # };
+  
+  # To Enable Steam Games
+  programs.steam = {
+  enable = true;
+  remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
+  dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
+  };
+  
+  # xRDP SEssion Gnome enable
   services.xrdp = {
     enable = true;
     openFirewall = true;
@@ -146,19 +232,16 @@
   # Enable the OpenSSH daemon.
   # services.openssh.enable = true;
 
-  # Nextcloud setup
-  environment.etc."nextcloud-admin-pass".text = "PWD";
-  services.nextcloud = {
-    enable = true;
-    package = pkgs.nextcloud30;
-    hostName = "nexcloud.local";
-    config.adminpassFile = "/etc/nextcloud-admin-pass";
-  };
-  
-  
+  # Enable tor  
+    services.tor.client.enable = true;
+  # Enable Mullvad service
+    # services.mullvad-vpn.enable = true;
 
   # Virt-Manager service
+  # Enable the libvirt daemon for managing virtual machines
   virtualisation.libvirtd.enable = true;
+
+  # Optional: Enable virt-manager for managing VMs with a GUI
   programs.virt-manager.enable = true;
   
   # Optimise the store. this enables periodic optimisation  
